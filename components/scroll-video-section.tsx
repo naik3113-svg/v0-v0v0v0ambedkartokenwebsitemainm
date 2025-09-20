@@ -5,10 +5,15 @@ import { useEffect, useRef, useState } from "react"
 export function ScrollVideoSection() {
   const [isVisible, setIsVisible] = useState(false)
   const [imageError, setImageError] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const sectionRef = useRef<HTMLDivElement>(null)
 
-  const defaultImageUrl = "/placeholder.svg?height=400&width=600"
-  const fallbackImageUrl = "/placeholder.svg?height=400&width=600"
+  const defaultImageUrl = "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=800&h=600&fit=crop"
+  const fallbackImageUrl = "/placeholder.svg?height=600&width=800"
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -24,6 +29,12 @@ export function ScrollVideoSection() {
 
     return () => observer.disconnect()
   }, [])
+
+  const handleImageError = () => {
+    if (mounted) {
+      setImageError(true)
+    }
+  }
 
   return (
     <section ref={sectionRef} className="py-20 bg-slate-900 text-white overflow-hidden">
@@ -61,12 +72,20 @@ export function ScrollVideoSection() {
 
             <div className="relative">
               <div className="aspect-video bg-slate-800 rounded-lg overflow-hidden">
-                <img
-                  src={!imageError ? defaultImageUrl : fallbackImageUrl}
-                  alt="Dr. Ambedkar Historical Moments"
-                  className="w-full h-full object-cover"
-                  onError={() => setImageError(true)}
-                />
+                {mounted ? (
+                  <img
+                    src={!imageError ? defaultImageUrl : fallbackImageUrl}
+                    alt="Dr. Ambedkar Historical Moments"
+                    className="w-full h-full object-cover"
+                    onError={handleImageError}
+                    loading="lazy"
+                    crossOrigin="anonymous"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-slate-700 animate-pulse flex items-center justify-center">
+                    <span className="text-slate-400">Loading...</span>
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/50 to-transparent"></div>
                 <div className="absolute bottom-4 left-4 right-4">
                   <p className="text-sm font-medium">

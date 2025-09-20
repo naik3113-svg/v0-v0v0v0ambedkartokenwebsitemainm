@@ -8,8 +8,8 @@ interface AmbedkarPortraitProps {
 export function AmbedkarPortrait({ animationPhase }: AmbedkarPortraitProps) {
   const [imageError, setImageError] = useState(false)
 
-  const defaultImageUrl = "/placeholder.svg?height=220&width=220"
-  const fallbackImageUrl = "/placeholder.svg?height=220&width=220"
+  const defaultImageUrl = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face"
+  const fallbackImageUrl = "/placeholder.svg?height=400&width=400"
 
   return (
     <div className="mb-6 sm:mb-8 animate-float relative z-40">

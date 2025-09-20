@@ -101,9 +101,13 @@ export default function AboutPage() {
 
           <div className="flex justify-center mb-8">
             <img
-              src="/placeholder.svg?height=300&width=300"
+              src="/dr--b-r--ambedkar-large-portrait.jpg"
               alt="Dr. B.R. Ambedkar"
-              className="w-64 h-64 rounded-full border-4 border-yellow-400 shadow-2xl"
+              className="w-64 h-64 rounded-full border-4 border-yellow-400 shadow-2xl object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement
+                target.src = "/placeholder.svg?height=300&width=300"
+              }}
             />
           </div>
         </div>

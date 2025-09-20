@@ -12,7 +12,7 @@ export function Navigation() {
   const navItems = [
     { name: "Home", href: "/" },
     { name: "About", href: "/about" },
-    { name: "Games", href: "/#games" },
+    { name: "Games", href: "/games" },
     { name: "Features", href: "/#features" },
     { name: "Tokenomics", href: "/#tokenomics" },
     { name: "Whitepaper", href: "/whitepaper" },

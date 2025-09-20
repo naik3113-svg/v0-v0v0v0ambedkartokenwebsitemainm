@@ -1,11 +1,14 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 
 export function AmbedkarPhotoSection() {
   const [showPopups, setShowPopups] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [backgroundImageError, setBackgroundImageError] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const [popupImages, setPopupImages] = useState<
     Array<{
       id: number
@@ -16,10 +19,14 @@ export function AmbedkarPhotoSection() {
     }>
   >([])
 
-  const defaultBackgroundUrl = "/placeholder.svg?height=1080&width=1920"
+  const defaultBackgroundUrl = "/historical-photo-.jpg"
   const fallbackBackgroundUrl = "/placeholder.svg?height=1080&width=1920"
-  const defaultPopupUrl = "/placeholder.svg?height=80&width=80"
+  const defaultPopupUrl = "/young-dr--ambedkar-animated-portrait-talking-about.jpg"
   const fallbackPopupUrl = "/placeholder.svg?height=80&width=80"
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     const checkMobile = () => {
@@ -30,6 +37,13 @@ export function AmbedkarPhotoSection() {
     window.addEventListener("resize", checkMobile)
     return () => window.removeEventListener("resize", checkMobile)
   }, [])
+
+  const handlePopupImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    if (mounted) {
+      const target = e.target as HTMLImageElement
+      target.src = fallbackPopupUrl
+    }
+  }
 
   const generatePopupImages = () => {
     const images = []
@@ -119,7 +133,6 @@ export function AmbedkarPhotoSection() {
         }}
       />
 
-      {/* Dark overlay for better text visibility */}
       <div className="absolute inset-0 bg-black/40" />
 
       {showPopups &&
@@ -136,23 +149,29 @@ export function AmbedkarPhotoSection() {
             }}
           >
             <div className="relative">
-              <img
-                src={defaultPopupUrl || "/placeholder.svg"}
-                alt={`Historical moment ${image.id + 1}`}
-                className={`object-cover rounded-lg border-2 border-white shadow-lg hover:scale-110 transition-transform duration-200 ${
-                  isMobile ? "w-16 h-16 sm:w-20 sm:h-20" : "w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28"
-                }`}
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement
-                  target.src = fallbackPopupUrl
-                }}
-              />
+              {mounted ? (
+                <img
+                  src={defaultPopupUrl || "/placeholder.svg"}
+                  alt={`Historical moment ${image.id + 1}`}
+                  className={`object-cover rounded-lg border-2 border-white shadow-lg hover:scale-110 transition-transform duration-200 ${
+                    isMobile ? "w-16 h-16 sm:w-20 sm:h-20" : "w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28"
+                  }`}
+                  onError={handlePopupImageError}
+                />
+              ) : (
+                <img
+                  src={defaultPopupUrl || "/placeholder.svg"}
+                  alt={`Historical moment ${image.id + 1}`}
+                  className={`object-cover rounded-lg border-2 border-white shadow-lg hover:scale-110 transition-transform duration-200 ${
+                    isMobile ? "w-16 h-16 sm:w-20 sm:h-20" : "w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28"
+                  }`}
+                />
+              )}
               <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/30 to-orange-500/30 rounded-lg animate-pulse"></div>
             </div>
           </div>
         ))}
 
-      {/* Bottom gradient overlay */}
       <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/80 to-transparent z-10" />
     </section>
   )

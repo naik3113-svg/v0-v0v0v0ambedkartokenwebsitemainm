@@ -2,17 +2,28 @@
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Star, Coins } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 export function HeroSection() {
   const [imageError, setImageError] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   const handleBuyToken = () => {
     window.open("https://pump.fun", "_blank")
   }
 
-  const defaultImageUrl = "/placeholder.svg?height=200&width=200"
-  const fallbackImageUrl = "/placeholder.svg?height=200&width=200"
+  const defaultImageUrl = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face"
+  const fallbackImageUrl = "/placeholder.svg?height=400&width=400"
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const handleImageError = () => {
+    if (mounted) {
+      setImageError(true)
+    }
+  }
 
   return (
     <section
@@ -23,12 +34,20 @@ export function HeroSection() {
         <div className="text-center">
           <div className="mb-8 relative">
             <div className="relative inline-block">
-              <img
-                src={!imageError ? defaultImageUrl : fallbackImageUrl}
-                alt="Dr. B.R. Ambedkar holding Ambedkar Token"
-                className="mx-auto rounded-full w-32 h-32 sm:w-48 sm:h-48 object-cover border-4 border-primary shadow-2xl animate-float"
-                onError={() => setImageError(true)}
-              />
+              {mounted ? (
+                <img
+                  src={!imageError ? defaultImageUrl : fallbackImageUrl}
+                  alt="Dr. B.R. Ambedkar holding Ambedkar Token"
+                  className="mx-auto rounded-full w-32 h-32 sm:w-48 sm:h-48 object-cover border-4 border-primary shadow-2xl animate-float"
+                  onError={handleImageError}
+                />
+              ) : (
+                <img
+                  src={defaultImageUrl || "/placeholder.svg"}
+                  alt="Dr. B.R. Ambedkar holding Ambedkar Token"
+                  className="mx-auto rounded-full w-32 h-32 sm:w-48 sm:h-48 object-cover border-4 border-primary shadow-2xl animate-float"
+                />
+              )}
               <div className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 w-8 h-8 sm:w-16 sm:h-16 bg-gradient-to-br from-accent to-primary rounded-full flex items-center justify-center animate-pulse-glow">
                 <Coins className="w-4 h-4 sm:w-8 sm:h-8 text-white" />
               </div>

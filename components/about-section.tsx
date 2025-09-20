@@ -2,10 +2,21 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { BookOpen, Scale, Users, Heart, Award, Globe } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 export function AboutSection() {
   const [imageError, setImageError] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const handleImageError = () => {
+    if (mounted) {
+      setImageError(true)
+    }
+  }
 
   const achievements = [
     {
@@ -41,8 +52,8 @@ export function AboutSection() {
     { year: "1950", event: "Indian Constitution came into effect", icon: <BookOpen className="h-4 w-4" /> },
   ]
 
-  const defaultImageUrl = "/placeholder.svg?height=300&width=400"
-  const fallbackImageUrl = "/placeholder.svg?height=300&width=400"
+  const defaultImageUrl = "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&h=400&fit=crop"
+  const fallbackImageUrl = "/placeholder.svg?height=400&width=600"
 
   return (
     <section id="about" className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-muted/50 to-background">
@@ -112,12 +123,21 @@ export function AboutSection() {
               </div>
             </div>
             <div className="flex justify-center">
-              <img
-                src={!imageError ? defaultImageUrl : fallbackImageUrl}
-                alt="Dr. Ambedkar's legacy and constitutional work"
-                className="rounded-lg shadow-lg max-w-full h-auto hover:scale-105 transition-transform duration-300"
-                onError={() => setImageError(true)}
-              />
+              {mounted ? (
+                <img
+                  src={!imageError ? defaultImageUrl : fallbackImageUrl}
+                  alt="Dr. Ambedkar's legacy and constitutional work"
+                  className="rounded-lg shadow-lg max-w-full h-auto hover:scale-105 transition-transform duration-300"
+                  onError={handleImageError}
+                  loading="lazy"
+                  crossOrigin="anonymous"
+                  style={{ maxHeight: "400px", width: "auto" }}
+                />
+              ) : (
+                <div className="w-full max-w-md h-64 bg-muted animate-pulse rounded-lg flex items-center justify-center">
+                  <span className="text-muted-foreground">Loading...</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
