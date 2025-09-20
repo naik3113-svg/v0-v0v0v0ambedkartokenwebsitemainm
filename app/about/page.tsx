@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { BookOpen, Award, Users, Scale, Home } from "lucide-react"
 import Link from "next/link"
+import { SafeImg } from "@/components/safe-img"
 
 export default function AboutPage() {
   const lifeEvents = [
@@ -100,14 +101,11 @@ export default function AboutPage() {
           </div>
 
           <div className="flex justify-center mb-8">
-            <img
+            <SafeImg
               src="/dr--b-r--ambedkar-large-portrait.jpg"
               alt="Dr. B.R. Ambedkar"
               className="w-64 h-64 rounded-full border-4 border-yellow-400 shadow-2xl object-cover"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement
-                target.src = "/placeholder.svg?height=300&width=300"
-              }}
+              fallbackSrc="/placeholder.svg?height=300&width=300"
             />
           </div>
         </div>

@@ -6,7 +6,7 @@ type Props = React.ImgHTMLAttributes<HTMLImageElement> & {
   fallbackSrc?: string
 }
 
-export default function SafeImg({ src, alt, className, fallbackSrc = "/placeholder.svg", ...rest }: Props) {
+export function SafeImg({ src, alt, className, fallbackSrc = "/placeholder.svg", ...rest }: Props) {
   const [current, setCurrent] = useState(src)
   return (
     <img
@@ -18,3 +18,5 @@ export default function SafeImg({ src, alt, className, fallbackSrc = "/placehold
     />
   )
 }
+
+export default SafeImg
