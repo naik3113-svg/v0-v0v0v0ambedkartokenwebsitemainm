@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Portal Runner — Enhanced</title>
+  <style>
+    :root {
+      /* Dark anime-inspired color scheme */
+      --bg0: #0a0a0f;
+      --bg1: #1a1a2e;
+      --line: #16213e;
+      --player: #00d4ff;
+      --hazard: #ff0080;
+      --coin: #ffd700;
+      --portal: #8a2be2;
+      --hud: #e0e6ff;
+      --shadow: rgba(0,0,0,0.4);
+      --glow: rgba(0,212,255,0.3);
+      --accent: #ff6b6b;
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: radial-gradient(circle at 50% 0%, var(--bg1), var(--bg0) 70%);
+      color: var(--hud);
+      font-family: 'Courier New', monospace;
+      overflow: hidden;
+    }
+    #wrap {
+      position: fixed; inset: 0;
+      display: grid;
+      grid-template-rows: 1fr auto;
+    }
+    canvas {
+      width: 100%; height: 100%;
+      display: block;
+      background: linear-gradient(180deg, rgba(10,10,15,0) 0%, rgba(10,10,15,0.3) 50%, rgba(10,10,15,0.8) 100%);
+    }
+    #hud {
+      position: absolute;
+      top: 12px; left: 12px; right: 12px;
+      display: flex; align-items: center; justify-content: space-between;
+      pointer-events: none;
+      text-shadow: 0 2px 4px var(--shadow);
+      font-weight: 700; letter-spacing: 1px;
+      font-size: 14px;
+    }
+    #hud .pill {
+      background: rgba(0,212,255,0.1);
+      border: 2px solid rgba(0,212,255,0.3);
+      border-radius: 20px;
+      padding: 8px 16px;
+      margin-right: 12px;
+      box-shadow: 0 0 20px var(--glow);
+      backdrop-filter: blur(10px);
+    }
+    #hud .right { display: flex; gap: 12px; }
+    #centerMsg {
+      position: absolute; inset: 0;
+      display: grid; place-items: center;
+      text-align: center;
+      pointer-events: none;
+      padding: 24px;
+    }
+    #centerMsg .box {
+      display: inline-block;
+      background: rgba(10,10,15,0.9);
+      border: 2px solid rgba(0,212,255,0.5);
+      border-radius: 20px;
+      padding: 24px 32px;
+      box-shadow: 0 0 40px var(--glow);
+      backdrop-filter: blur(15px);
+    }
+    kbd {
+      background: rgba(0,212,255,0.2);
+      border: 1px solid rgba(0,212,255,0.4);
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9em;
+      font-weight: bold;
+      color: var(--player);
+    }
+    #footer {
+      padding: 12px 16px;
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 12px;
+      color: rgba(224,230,255,0.8);
+      background: linear-gradient(180deg, rgba(0,212,255,0.05), rgba(0,212,255,0));
+      border-top: 1px solid rgba(0,212,255,0.2);
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="game"></canvas>
+
+    <div id="hud">
+      <div class="left">
+        <span class="pill">COINS: <span id="coins">0</span>/<span id="target">15</span></span>
+        <span class="pill">TIME: <span id="time">0.0</span>s</span>
+        <span class="pill">BEST: <span id="best">—</span></span>
+      </div>
+      <div class="right">
+        <span class="pill">SLOW: <span id="slow">READY</span></span>
+        <span class="pill">STATE: <span id="state">MENU</span></span>
+      </div>
+    </div>
+
+    <div id="centerMsg">
+      <div class="box" id="msgBox">
+        <div style="font-size:24px; margin-bottom:12px; color: var(--player); text-shadow: 0 0 10px var(--glow);">PORTAL RUNNER</div>
+        <div style="opacity:0.9; margin-bottom:12px; color: var(--hud);">
+          Collect coins to charge the portal. Touch the portal to win. Avoid hazards.
+        </div>
+        <div style="opacity:0.9; margin-bottom:4px;">Move: <kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd> • Jump: <kbd>↑</kbd> / <kbd>W</kbd> / <kbd>Space</kbd></div>
+        <div style="opacity:0.9; margin-bottom:12px;">Time‑slow: <kbd>Shift</kbd> • Pause: <kbd>P</kbd></div>
+        <div style="font-weight:700; color: var(--accent);">Press <kbd>Enter</kbd> to start</div>
+      </div>
+    </div>
+
+    <div id="footer">
+      <div>Enhanced Portal Runner • Anime-Style Graphics</div>
+      <div>Tip: Master the double-jump and time-slow combo!</div>
+    </div>
+  </div>
+
+  <script>
+  (() => {
+    // Canvas setup
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+
+    const HUD = {
+      coins: document.getElementById('coins'),
+      target: document.getElementById('target'),
+      time: document.getElementById('time'),
+      best: document.getElementById('best'),
+      slow: document.getElementById('slow'),
+      state: document.getElementById('state'),
+      msgBox: document.getElementById('msgBox')
+    };
+
+    const DPR = () => Math.min(2, window.devicePixelRatio || 1);
+    function resize() {
+      const dpr = DPR();
+      canvas.width = Math.floor(innerWidth * dpr);
+      canvas.height = Math.floor(innerHeight * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener('resize', resize, { passive: true });
+    resize();
+
+    // Utilities
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+    // Deterministic PRNG
+    function RNG(seed = 123456789) {
+      let s = seed >>> 0;
+      return () => {
+        s ^= s << 13; s >>>= 0;
+        s ^= s >>> 17; s >>>= 0;
+        s ^= s << 5; s >>>= 0;
+        return (s >>> 0) / 0xFFFFFFFF;
+      };
+    }
+
+    const keys = new Set();
+    const keyPressed = new Set();
+    
+    window.addEventListener('keydown', (e) => { 
+      const key = e.key.toLowerCase();
+      if (!keys.has(key)) {
+        keyPressed.add(key);
+      }
+      keys.add(key); 
+      if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'enter', 'p', 'shift'].includes(key)) {
+        e.preventDefault(); 
+      }
+    });
+    
+    window.addEventListener('keyup', (e) => {
+      const key = e.key.toLowerCase();
+      keys.delete(key);
+      keyPressed.delete(key);
+    });
+
+    // Game state
+    const STATE = { MENU:'menu', PLAY:'play', PAUSE:'pause', WIN:'win', OVER:'over' };
+    const world = {
+      state: STATE.MENU,
+      t: 0,
+      best: localStorage.getItem('portalRunnerBest') ? parseFloat(localStorage.getItem('portalRunnerBest')) : null,
+      coins: 0,
+      coinTarget: 15,
+      slowReady: true,
+      slowTimer: 0,
+      slowMax: 2.5,
+      seed: Math.floor(Math.random()*1e9),
+      laneH: 80,
+      groundY: () => canvas.height / DPR() - 120,
+      scrollX: 0,
+      portalReady: false,
+      bossSpawned: false,
+    };
+    HUD.target.textContent = world.coinTarget;
+
+    class Player {
+      constructor() {
+        this.w = 36; this.h = 48;
+        this.x = 120; this.y = 0;
+        this.vx = 0; this.vy = 0;
+        this.speed = 2.5;
+        this.jumpV = 9.0;
+        this.gravity = 24.0;
+        this.coyote = 0;
+        this.coyoteMax = 0.12;
+        this.jumpBuf = 0;
+        this.jumpBufMax = 0.15;
+        this.double = true;
+        this.onGround = false;
+        this.trail = [];
+      }
+      reset() {
+        this.x = 120; this.y = world.groundY() - this.h;
+        this.vx = 0; this.vy = 0; this.coyote = 0; this.jumpBuf = 0;
+        this.double = true; this.onGround = true;
+        this.trail = [];
+      }
+      aabb() { return {x:this.x, y:this.y, w:this.w, h:this.h}; }
+    }
+
+    class Coin { constructor(x,y){ this.x=x; this.y=y; this.r=10; this.t=0; this.hit=false; } }
+    class Haz  { constructor(x,y,w,h,type=0){ this.x=x; this.y=y; this.w=w; this.h=h; this.type=type; this.t=0; } }
+    class Portal { constructor(x,y){ this.x=x; this.y=y; this.r=30; this.t=0; this.open=false; } }
+
+    const player = new Player();
+    const coins = [];
+    const hazards = [];
+    let portal = null;
+    const particles = [];
+
+    function spawnWave(rng, baseX) {
+      const lanes = [world.groundY()-player.h, world.groundY()-player.h- world.laneH, world.groundY()-player.h- world.laneH*2];
+      const laneY = lanes[Math.floor(rng()*lanes.length)];
+      
+      const arc = 6 + Math.floor(rng()*4);
+      const gap = 32;
+      for (let i=0;i<arc;i++){
+        coins.push(new Coin(baseX + i*gap, laneY - 28 - Math.sin(i/arc*Math.PI)*22));
+      }
+      
+      const choice = rng();
+      if (choice < 0.35) {
+        const count = 2 + (rng()<0.6 ? 1 : 0);
+        for (let i=0;i<count;i++){
+          const w = 24 + Math.floor(rng()*36);
+          const h = 24 + Math.floor(rng()*48);
+          hazards.push(new Haz(baseX + 140 + i*80, world.groundY()-h, w, h, 0));
+        }
+      } else if (choice < 0.75) {
+        const h = 12, w = 100;
+        const y = laneY + player.h - 12;
+        hazards.push(new Haz(baseX + 140, y, w, h, 1));
+      } else {
+        const h = 16, w = 160;
+        const y = world.groundY()-world.laneH*2 - 20;
+        hazards.push(new Haz(baseX + 120, y, w, h, 0));
+      }
+    }
+
+    function spawnBossSweep(x) {
+      const h = 28;
+      const y = world.groundY()-world.laneH*1.2;
+      hazards.push(new Haz(x, y, 240, h, 2));
+    }
+
+    function resetRun() {
+      world.t = 0;
+      world.coins = 0;
+      world.scrollX = 0;
+      world.portalReady = false;
+      world.bossSpawned = false;
+      world.slowReady = true;
+      world.slowTimer = 0;
+      coins.length = 0;
+      hazards.length = 0;
+      particles.length = 0;
+      portal = null;
+
+      const rng = RNG(world.seed);
+      let x = 400;
+      for (let i=0;i<20;i++){
+        spawnWave(rng, x);
+        x += 240 + Math.floor(rng()*140);
+        if (i===14 && !world.bossSpawned) { spawnBossSweep(x+100); world.bossSpawned = true; }
+      }
+      portal = new Portal(x + 280, world.groundY()-40);
+      player.reset();
+      updateHUD();
+    }
+
+    // Collision
+    function hitAABB(a,b){ return (a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y); }
+    function hitCircleRect(cx,cy,r,rx,ry,rw,rh){
+      const nx = clamp(cx, rx, rx+rw);
+      const ny = clamp(cy, ry, ry+rh);
+      const dx = cx - nx, dy = cy - ny;
+      return (dx*dx + dy*dy) <= r*r;
+    }
+
+    function burst(x,y,color,count=12){
+      for (let i=0;i<count;i++){
+        particles.push({
+          x, y,
+          vx: (Math.random()*2-1)*3.5,
+          vy: (Math.random()*-1.5 - 0.5)*2.5,
+          r: 2 + Math.random()*3,
+          life: 0.8 + Math.random()*0.6,
+          t: 0,
+          color,
+          glow: true
+        });
+      }
+    }
+
+    function timeScale() {
+      if (world.slowTimer > 0) return 0.25;
+      return 1.0;
+    }
+
+    function updateHUD() {
+      HUD.coins.textContent = world.coins;
+      HUD.time.textContent = world.t.toFixed(1);
+      HUD.best.textContent = world.best ? world.best.toFixed(1) + 's' : '—';
+      HUD.slow.textContent = world.slowReady ? 'READY' : world.slowTimer > 0 ? 'ACTIVE' : 'USED';
+      HUD.state.textContent = world.state.toUpperCase();
+
+      if (world.state === STATE.MENU) {
+        HUD.msgBox.innerHTML = `
+          <div style="font-size:24px; margin-bottom:12px; color: var(--player); text-shadow: 0 0 10px var(--glow);">PORTAL RUNNER</div>
+          <div style="opacity:0.9; margin-bottom:12px; color: var(--hud);">
+            Collect coins to charge the portal. Touch the portal to win. Avoid hazards.
+          </div>
+          <div style="opacity:0.9; margin-bottom:4px;">Move: <kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd> • Jump: <kbd>↑</kbd> / <kbd>W</kbd> / <kbd>Space</kbd></div>
+          <div style="opacity:0.9; margin-bottom:12px;">Time‑slow: <kbd>Shift</kbd> • Pause: <kbd>P</kbd></div>
+          <div style="font-weight:700; color: var(--accent);">Press <kbd>Enter</kbd> to start</div>
+        `;
+        HUD.msgBox.parentElement.style.display = 'grid';
+      } else if (world.state === STATE.PAUSE) {
+        HUD.msgBox.innerHTML = `
+          <div style="font-size:28px; margin-bottom:12px; color: var(--accent);">⏸️ PAUSED</div>
+          <div style="font-weight:700;">Press <kbd>P</kbd> to resume</div>
+        `;
+        HUD.msgBox.parentElement.style.display = 'grid';
+      } else if (world.state === STATE.WIN) {
+        const time = parseFloat(world.t.toFixed(2));
+        if (world.best == null || time < world.best) {
+          world.best = time;
+          localStorage.setItem('portalRunnerBest', time.toString());
+        }
+        HUD.msgBox.innerHTML = `
+          <div style="font-size:28px; margin-bottom:12px; color: var(--player); text-shadow: 0 0 15px var(--glow);">🎉 VICTORY!</div>
+          <div style="opacity:0.9; margin-bottom:12px;">Time: ${world.t.toFixed(1)}s</div>
+          ${world.best ? `<div style="opacity:0.9; margin-bottom:12px; color: var(--accent);">Best: ${world.best.toFixed(1)}s</div>` : ''}
+          <div style="font-weight:700;">Press <kbd>Enter</kbd> to play again</div>
+        `;
+        HUD.msgBox.parentElement.style.display = 'grid';
+      } else if (world.state === STATE.OVER) {
+        HUD.msgBox.innerHTML = `
+          <div style="font-size:28px; margin-bottom:12px; color: var(--hazard);">💥 GAME OVER</div>
+          <div style="opacity:0.9; margin-bottom:12px;">Time: ${world.t.toFixed(1)}s</div>
+          <div style="font-weight:700;">Press <kbd>Enter</kbd> to try again</div>
+        `;
+        HUD.msgBox.parentElement.style.display = 'grid';
+      } else {
+        HUD.msgBox.parentElement.style.display = 'none';
+      }
+    }
+
+    let last = performance.now();
+    function step(now) {
+      const dtRaw = Math.min(0.025, (now - last)/1000);
+      last = now;
+
+      if (world.state === STATE.MENU) {
+        if (keyPressed.has('enter')) { 
+          keyPressed.delete('enter');
+          world.state = STATE.PLAY; 
+          world.seed = Math.floor(Math.random()*1e9); 
+          resetRun(); 
+        }
+        draw(now);
+        requestAnimationFrame(step);
+        return;
+      }
+      
+      if (world.state === STATE.PAUSE) {
+        if (keyPressed.has('p')) {
+          keyPressed.delete('p');
+          world.state = STATE.PLAY;
+          updateHUD();
+        }
+        draw(now, true);
+        requestAnimationFrame(step);
+        return;
+      }
+      
+      if (world.state === STATE.WIN || world.state === STATE.OVER) {
+        if (keyPressed.has('enter')) {
+          keyPressed.delete('enter');
+          world.state = STATE.PLAY;
+          world.seed = Math.floor(Math.random()*1e9);
+          resetRun();
+        }
+        draw(now);
+        requestAnimationFrame(step);
+        return;
+      }
+
+      if (keyPressed.has('p')) { 
+        keyPressed.delete('p'); 
+        world.state = STATE.PAUSE; 
+        updateHUD(); 
+      }
+
+      if (world.slowReady && (keys.has('shift') || keys.has('shiftleft') || keys.has('shiftright'))) {
+        world.slowReady = false;
+        world.slowTimer = world.slowMax;
+      }
+
+      const dt = dtRaw * timeScale();
+      world.t += dt;
+
+      if (world.slowTimer > 0) {
+        world.slowTimer -= dtRaw;
+        if (world.slowTimer <= 0) world.slowTimer = 0;
+      }
+
+      const left = keys.has('arrowleft') || keys.has('a');
+      const right = keys.has('arrowright') || keys.has('d');
+      const jumpKey = keys.has(' ') || keys.has('arrowup') || keys.has('w');
+
+      const baseRun = 2.8;
+      player.vx = (right?1:0 - (left?1:0)) * player.speed;
+      world.scrollX += (baseRun + Math.max(0, player.vx*0.7)) * 60 * dt;
+
+      // Add trail effect
+      player.trail.push({x: player.x + player.w/2, y: player.y + player.h/2, t: 0});
+      if (player.trail.length > 8) player.trail.shift();
+      player.trail.forEach(t => t.t += dt);
+
+      const ground = world.groundY();
+      player.vy += player.gravity * dt;
+      player.y += player.vy;
+      
+      if (player.y + player.h >= ground) {
+        player.y = ground - player.h;
+        player.vy = 0;
+        player.onGround = true;
+        player.coyote = player.coyoteMax;
+        player.double = true;
+      } else {
+        player.onGround = false;
+        player.coyote -= dt;
+      }
+
+      if (jumpKey) player.jumpBuf = player.jumpBufMax; else player.jumpBuf -= dt;
+      const canGroundJump = player.coyote > 0 && player.jumpBuf > 0;
+      const canDouble = !player.onGround && player.double && player.jumpBuf > 0;
+
+      if (canGroundJump) {
+        player.vy = -player.jumpV;
+        player.coyote = 0; player.jumpBuf = 0;
+        burst(player.x+player.w*0.5, player.y+player.h, '#00d4ff', 10);
+      } else if (canDouble) {
+        player.vy = -player.jumpV * 0.85;
+        player.double = false; player.jumpBuf = 0;
+        burst(player.x+player.w*0.5, player.y+player.h*0.5, '#00d4ff', 8);
+      }
+
+      // Coins
+      for (const c of coins) {
+        if (c.hit) continue;
+        c.t += dt;
+        const cx = c.x - world.scrollX*0.6;
+        const cy = c.y + Math.sin(c.t*7)*0.8;
+        if (hitCircleRect(cx, cy, c.r, player.x, player.y, player.w, player.h)) {
+          c.hit = true;
+          world.coins++;
+          burst(player.x+player.w*0.5, player.y+player.h*0.5, '#ffd700', 15);
+          if (world.coins >= world.coinTarget) world.portalReady = true;
+        }
+      }
+
+      // Hazards
+      for (const h of hazards) {
+        h.t += dt;
+        let hx = h.x - world.scrollX;
+        let hy = h.y;
+        let hw = h.w, hh = h.h;
+
+        if (h.type === 1) {
+          hy += Math.sin(h.t*2.8)*20;
+        }
+        if (h.type === 2) {
+          hx -= Math.sin(h.t*1.4)*100;
+        }
+
+        if (hitAABB(player.aabb(), {x:hx, y:hy, w:hw, h:hh})) {
+          world.state = STATE.OVER;
+          burst(player.x+player.w*0.5, player.y+player.h*0.5, '#ff0080', 30);
+          updateHUD();
+        }
+      }
+
+      // Portal
+      if (portal) {
+        portal.t += dt;
+        portal.open = world.portalReady;
+        const px = portal.x - world.scrollX;
+        if (portal.open && Math.hypot((player.x+player.w*0.5)-px, (player.y+player.h*0.5)-portal.y) < (portal.r+24)) {
+          world.state = STATE.WIN;
+          updateHUD();
+        }
+      }
+
+      // Particles
+      for (let i=particles.length-1;i>=0;i--){
+        const p = particles[i];
+        p.t += dt;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 24*dt*0.3;
+        if (p.t >= p.life) particles.splice(i,1);
+      }
+
+      updateHUD();
+      draw(now);
+      requestAnimationFrame(step);
+    }
+
+    function draw(now, paused=false) {
+      const w = canvas.width / DPR(), h = canvas.height / DPR();
+      ctx.clearRect(0,0,w,h);
+
+      // Animated background
+      const t = now * 0.001;
+      const bands = 8;
+      for (let i=0;i<bands;i++){
+        const y = h - 100 - i*20;
+        ctx.fillStyle = i%2? 'rgba(0,212,255,0.03)' : 'rgba(138,43,226,0.02)';
+        const ox = -((world.scrollX*0.5) % 60);
+        for (let x=-60;x<w+60;x+=60){
+          ctx.fillRect(x+ox, y + Math.sin(t+i)*2, 50, 3);
+        }
+      }
+
+      // Ground with glow
+      ctx.fillStyle = 'rgba(0,212,255,0.1)';
+      ctx.fillRect(0, world.groundY()+player.h- player.h + 28, w, 4);
+      ctx.shadowColor = '#00d4ff';
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = 'rgba(0,212,255,0.3)';
+      ctx.fillRect(0, world.groundY()+player.h- player.h + 30, w, 2);
+      ctx.shadowBlur = 0;
+
+      // Player trail
+      for (let i = 0; i < player.trail.length; i++) {
+        const trail = player.trail[i];
+        const alpha = (1 - trail.t / 0.5) * 0.3;
+        if (alpha > 0) {
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = '#00d4ff';
+          ctx.beginPath();
+          ctx.arc(trail.x, trail.y, 3 * (1 - trail.t / 0.5), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1;
+
+      // Coins with glow
+      for (const c of coins) {
+        if (c.hit) continue;
+        const cx = c.x - world.scrollX*0.6;
+        const cy = c.y + Math.sin((c.t)*7)*0.8;
+        
+        ctx.shadowColor = '#ffd700';
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.arc(cx, cy, c.r, 0, Math.PI*2);
+        ctx.fillStyle = '#ffd700';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      // Hazards with enhanced effects
+      for (const h of hazards) {
+        let hx = h.x - world.scrollX;
+        let hy = h.y;
+        let hw = h.w, hh = h.h;
+
+        if (h.type === 1) hy += Math.sin(h.t*2.8)*20;
+        if (h.type === 2) hx -= Math.sin(h.t*1.4)*100;
+
+        ctx.shadowColor = '#ff0080';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = '#ff0080';
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 2;
+
+        if (h.type === 1) {
+          ctx.save();
+          ctx.translate(hx, hy);
+          const spikes = Math.max(5, Math.floor(hw/16));
+          for (let i=0;i<spikes;i++){
+            ctx.beginPath();
+            ctx.moveTo(i*16, hh);
+            ctx.lineTo(i*16+8, 0);
+            ctx.lineTo(i*16+16, hh);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+          }
+          ctx.restore();
+        } else if (h.type === 2) {
+          ctx.save();
+          ctx.translate(hx, hy);
+          ctx.fillRect(0,0,hw,hh);
+          ctx.globalCompositeOperation = 'destination-out';
+          ctx.fillRect(hw*0.25, 0, hw*0.5, hh);
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.strokeRect(0,0,hw,hh);
+          ctx.restore();
+        } else {
+          ctx.fillRect(hx, hy, hw, hh);
+          ctx.strokeRect(hx, hy, hw, hh);
+        }
+        ctx.shadowBlur = 0;
+      }
+
+      // Portal with enhanced effects
+      if (portal) {
+        const px = portal.x - world.scrollX;
+        const py = portal.y;
+        
+        if (portal.open) {
+          ctx.shadowColor = '#8a2be2';
+          ctx.shadowBlur = 20;
+          for (let i=0;i<4;i++){
+            ctx.beginPath();
+            ctx.arc(px, py, portal.r + i*12 + Math.sin(portal.t*5+i)*4, 0, Math.PI*2);
+            ctx.strokeStyle = `rgba(138, 43, 226, ${0.9-i*0.2})`;
+            ctx.lineWidth = 4;
+            ctx.stroke();
+          }
+          ctx.fillStyle = 'rgba(138, 43, 226, 0.4)';
+          ctx.beginPath();
+          ctx.arc(px, py, portal.r, 0, Math.PI*2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        } else {
+          ctx.strokeStyle = 'rgba(138, 43, 226, 0.4)';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(px, py, portal.r, 0, Math.PI*2);
+          ctx.stroke();
+        }
+      }
+
+      // Player with glow
+      ctx.shadowColor = '#00d4ff';
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = '#00d4ff';
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+      ctx.lineWidth = 3;
+      ctx.fillRect(player.x, player.y, player.w, player.h);
+      ctx.strokeRect(player.x, player.y, player.w, player.h);
+      ctx.shadowBlur = 0;
+
+      // Particles with glow
+      for (const p of particles) {
+        const alpha = Math.max(0, (p.life - p.t) / p.life);
+        ctx.globalAlpha = alpha;
+        if (p.glow) {
+          ctx.shadowColor = p.color;
+          ctx.shadowBlur = 8;
+        }
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+      ctx.globalAlpha = 1;
+
+      if (paused) {
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(0,0,w,h);
+      }
+    }
+
+    updateHUD();
+    requestAnimationFrame(step);
+  })();
+  </script>
+</body>
+</html>
